@@ -1,9 +1,11 @@
 package sandbox.observation;
 
+import org.bsc.async.AsyncGenerator;
 import org.bsc.langgraph4j.CompiledGraph;
 import org.bsc.langgraph4j.GraphInput;
 import org.bsc.langgraph4j.GraphResult;
 import org.bsc.langgraph4j.GraphStateException;
+import org.bsc.langgraph4j.NodeOutput;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.state.StateSnapshot;
 import org.slf4j.Logger;
@@ -50,13 +52,21 @@ public final class Phase2ResumeInNewProcess {
                 ObservationState.KEY_HUMAN_DECISION, HUMAN_DECISION, afterHuman.next());
 
         LOG.info("--- resume stream ---");
-        for (final Object raw : graph.stream(GraphInput.resume(), updated)) {
+        final AsyncGenerator.Cancellable<NodeOutput<ObservationState>> stream =
+                graph.stream(GraphInput.resume(), updated);
+        for (final Object raw : stream) {
             LOG.info("stream event | {}", EventLog.describe(GraphResult.from(raw)));
         }
+        LOG.info("stream result value (generator done) | {}", EventLog.describe(GraphResult.from(stream)));
 
+        // 读侧语义对比：getState 读的是**该 config 锚定的那个 checkpoint**，不是"最新"。
         final StateSnapshot<ObservationState> finalSnapshot = graph.getState(updated);
-        LOG.info("final state | node={} | next={} | data={}",
+        LOG.info("getState(updated) | node={} | next={} | data={}",
                 finalSnapshot.node(), finalSnapshot.next(), finalSnapshot.state().data());
+
+        final StateSnapshot<ObservationState> lastSnapshot = graph.lastStateOf(updated).orElseThrow();
+        LOG.info("lastStateOf(updated) | node={} | next={} | data={}",
+                lastSnapshot.node(), lastSnapshot.next(), lastSnapshot.state().data());
 
         LOG.info("--- getStateHistory ---");
         for (final StateSnapshot<ObservationState> snapshot : graph.getStateHistory(updated)) {

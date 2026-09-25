@@ -1,8 +1,10 @@
 package sandbox.observation;
 
+import org.bsc.async.AsyncGenerator;
 import org.bsc.langgraph4j.CompiledGraph;
 import org.bsc.langgraph4j.GraphResult;
 import org.bsc.langgraph4j.GraphStateException;
+import org.bsc.langgraph4j.NodeOutput;
 import org.bsc.langgraph4j.RunnableConfig;
 import org.bsc.langgraph4j.state.StateSnapshot;
 import org.slf4j.Logger;
@@ -41,13 +43,21 @@ public final class Phase1RunToInterrupt {
                 .build();
 
         LOG.info("--- stream until interruption ---");
-        for (final Object raw : graph.stream(Map.of(ObservationState.KEY_DRAFT, ""), config)) {
+        final AsyncGenerator.Cancellable<NodeOutput<ObservationState>> stream =
+                graph.stream(Map.of(ObservationState.KEY_DRAFT, ""), config);
+        for (final Object raw : stream) {
             LOG.info("stream event | {}", EventLog.describe(GraphResult.from(raw)));
         }
+        // 中断信号是 AsyncGenerator 的**完成值**，不在 for-each 的元素流里 —— 必须显式取。
+        LOG.info("stream result value (generator done) | {}", EventLog.describe(GraphResult.from(stream)));
 
         final StateSnapshot<ObservationState> snapshot = graph.getState(config);
-        LOG.info("state after interrupt | node={} | next={} | data={}",
+        LOG.info("getState(config) | node={} | next={} | data={}",
                 snapshot.node(), snapshot.next(), snapshot.state().data());
+
+        final StateSnapshot<ObservationState> lastSnapshot = graph.lastStateOf(config).orElseThrow();
+        LOG.info("lastStateOf(config) | node={} | next={} | data={}",
+                lastSnapshot.node(), lastSnapshot.next(), lastSnapshot.state().data());
 
         logCheckpointFiles();
 
