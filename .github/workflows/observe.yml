@@ -7,8 +7,9 @@ on:
 
 jobs:
   langgraph4j-interrupt:
-    name: LangGraph4j interrupt + cross-process resume
+    name: LangGraph4j interrupt + cross-process resume (①②)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,5 +39,58 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lg4j-checkpoints
+          path: target/lg4j-checkpoints
+          if-no-files-found: warn
+
+  decision-evidence-and-failure-seams:
+    name: Decision evidence durability (③) + failure / kill-switch seams (⑤)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Compile
+        run: mvn -B -ntp compile
+
+      - name: Phase 3 - write decision evidence, stop at human gate (JVM #1)
+        run: |
+          set -o pipefail
+          mvn -B -ntp exec:java -Dexec.mainClass=sandbox.observation.Phase3WriteEvidence 2>&1 | tee target/phase3-evidence.log
+
+      - name: Phase 4 - read it back in a fresh process (JVM #2)
+        run: |
+          set -o pipefail
+          mvn -B -ntp exec:java -Dexec.mainClass=sandbox.observation.Phase4ReadEvidenceInNewProcess 2>&1 | tee target/phase4-evidence.log
+
+      - name: Phase 5 - failure seams and kill switch probes
+        run: |
+          set -o pipefail
+          mvn -B -ntp exec:java -Dexec.mainClass=sandbox.observation.Phase5FailureSeams 2>&1 | tee target/phase5-failure-seams.log
+
+      - name: Checkpoint files left on disk
+        if: always()
+        run: ls -l target/lg4j-checkpoints || true
+
+      - name: Upload raw logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: observation-logs-3-5
+          path: target/*.log
+          if-no-files-found: warn
+
+      - name: Upload checkpoint files
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lg4j-checkpoints-3-5
           path: target/lg4j-checkpoints
           if-no-files-found: warn

@@ -37,12 +37,16 @@
 ```bash
 # 本地若已有 JDK 17：
 mvn -B compile
-mvn -B exec:java -Dexec.mainClass=sandbox.observation.Phase1RunToInterrupt
-mvn -B exec:java -Dexec.mainClass=sandbox.observation.Phase2ResumeInNewProcess
+mvn -B exec:java -Dexec.mainClass=sandbox.observation.Phase1RunToInterrupt      # ① / ②
+mvn -B exec:java -Dexec.mainClass=sandbox.observation.Phase2ResumeInNewProcess # ① / ②
+mvn -B exec:java -Dexec.mainClass=sandbox.observation.Phase3WriteEvidence      # ③
+mvn -B exec:java -Dexec.mainClass=sandbox.observation.Phase4ReadEvidenceInNewProcess # ③
+mvn -B exec:java -Dexec.mainClass=sandbox.observation.Phase5FailureSeams       # ⑤
 ```
 
-两条命令是**两个独立 JVM** —— 这正是「跨进程恢复」的取证点：阶段 1 跑到中断后**进程结束**，
-阶段 2 在**新进程**里从磁盘上的 checkpoint 恢复。
+阶段 1 / 2 与阶段 3 / 4 各自是**两个独立 JVM** —— 这正是「跨进程恢复」的取证点：前一阶段跑到中断后**进程结束**，
+后一阶段在**新进程**里从磁盘上的 checkpoint 恢复。阶段 5 的四个探针在**同一进程**里跑（重试 / 失败外抛 /
+异常转中断 / 取消），只靠不同的 `threadId` 分开各自的盘上痕迹。
 
 ## 当前观察对象
 
