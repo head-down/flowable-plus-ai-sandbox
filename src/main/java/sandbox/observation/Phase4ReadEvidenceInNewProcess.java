@@ -47,10 +47,12 @@ public final class Phase4ReadEvidenceInNewProcess {
 
         LOG.info("--- read #1: fresh config with no caller metadata ---");
         final StateSnapshot<EvidenceState> bare = graph.getState(fresh);
-        final String bareMetadataKeys = String.join(",", bare.metadataKeys());
+        final String bareInheritedKeys = String.join(",", bare.metadataKeys());
+        final String bareConfigKeys = String.join(",", bare.config().metadataKeys());
         final String bareState = String.valueOf(bare.state().data());
         LOG.info("state restored from disk | node={} | next={}", bare.node(), bare.next());
-        LOG.info("state restored from disk | metadataKeys=[{}]", bareMetadataKeys);
+        LOG.info("state restored from disk | NodeOutput.metadataKeys()=[{}] | config().metadataKeys()=[{}]",
+                bareInheritedKeys, bareConfigKeys);
         LOG.info("state restored from disk | stateData={}", bareState);
 
         LOG.info("--- read #2: same disk, caller metadata added to THIS config only ---");
@@ -59,14 +61,16 @@ public final class Phase4ReadEvidenceInNewProcess {
                 .putMetadata(META_DECISION_SOURCE_ID, META_DECISION_SOURCE_ID_VALUE)
                 .build();
         final StateSnapshot<EvidenceState> annotated = graph.getState(withMetadata);
-        final String annotatedMetadataKeys = String.join(",", annotated.metadataKeys());
-        LOG.info("same checkpoint | metadataKeys=[{}]", annotatedMetadataKeys);
+        final String annotatedConfigKeys = String.join(",", annotated.config().metadataKeys());
+        LOG.info("same checkpoint | config().metadataKeys()=[{}]", annotatedConfigKeys);
 
         LOG.info("--- getStateHistory in a fresh process ---");
         for (final StateSnapshot<EvidenceState> entry : graph.getStateHistory(fresh)) {
-            final String entryMetadataKeys = String.join(",", entry.metadataKeys());
+            final String entryInheritedKeys = String.join(",", entry.metadataKeys());
+            final String entryConfigKeys = String.join(",", entry.config().metadataKeys());
             final String entryState = String.valueOf(entry.state().data());
-            LOG.info("history entry | node={} | next={} | metadataKeys=[{}]", entry.node(), entry.next(), entryMetadataKeys);
+            LOG.info("history entry | node={} | next={} | metadataKeys()=[{}] | config().metadataKeys()=[{}]",
+                    entry.node(), entry.next(), entryInheritedKeys, entryConfigKeys);
             LOG.info("history entry | stateData={}", entryState);
         }
 

@@ -78,15 +78,19 @@ public final class Phase3WriteEvidence {
         final String stateData = String.valueOf(snapshot.state().data());
         LOG.info("getState(config) | node={} | next={}", snapshot.node(), snapshot.next());
         LOG.info("getState(config) | stateData={}", stateData);
-        final String snapshotMetadataKeys = String.join(",", snapshot.metadataKeys());
-        LOG.info("getState(config) | metadataKeys=[{}] | (这是调用方本次传进去的，不是从盘上读回来的)",
-                snapshotMetadataKeys);
+        final String inheritedKeys = String.join(",", snapshot.metadataKeys());
+        final String configKeys = String.join(",", snapshot.config().metadataKeys());
+        LOG.info("getState(config) | NodeOutput.metadataKeys()=[{}] | config().metadataKeys()=[{}]",
+                inheritedKeys, configKeys);
+        LOG.info("getState(config) | 说明：元数据袋挂在快照的 config() 上；它继承自 NodeOutput 的 metadataKeys() 恒空");
 
         LOG.info("--- getStateHistory ---");
         for (final StateSnapshot<EvidenceState> entry : graph.getStateHistory(config)) {
-            final String entryMetadataKeys = String.join(",", entry.metadataKeys());
+            final String entryInheritedKeys = String.join(",", entry.metadataKeys());
+            final String entryConfigKeys = String.join(",", entry.config().metadataKeys());
             final String entryState = String.valueOf(entry.state().data());
-            LOG.info("history entry | node={} | next={} | metadataKeys=[{}]", entry.node(), entry.next(), entryMetadataKeys);
+            LOG.info("history entry | node={} | next={} | metadataKeys()=[{}] | config().metadataKeys()=[{}]",
+                    entry.node(), entry.next(), entryInheritedKeys, entryConfigKeys);
             LOG.info("history entry | stateData={}", entryState);
         }
 

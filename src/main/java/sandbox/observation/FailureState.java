@@ -24,9 +24,12 @@ public class FailureState extends AgentState {
 
     public static final String KEY_TRAIL = "trail";
 
+    /** 通道默认值 —— 用来表达「人还没有表态」，而不是让「有没有人表态」这件事消失。 */
+    public static final String NO_HUMAN_DECISION = "";
+
     public static final Map<String, Channel<?>> SCHEMA = Map.of(
             KEY_DECISION, Channels.<String>base(() -> ""),
-            KEY_HUMAN_DECISION, Channels.<String>base(() -> ""),
+            KEY_HUMAN_DECISION, Channels.<String>base(() -> NO_HUMAN_DECISION),
             KEY_TRAIL, Channels.<String>appender(ArrayList::new)
     );
 
@@ -40,6 +43,10 @@ public class FailureState extends AgentState {
 
     public Optional<String> humanDecision() {
         return value(KEY_HUMAN_DECISION);
+    }
+
+    public boolean hasHumanDecision() {
+        return humanDecision().filter(decision -> !NO_HUMAN_DECISION.equals(decision)).isPresent();
     }
 
     public List<String> trail() {

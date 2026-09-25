@@ -199,8 +199,8 @@ public final class Phase5FailureSeams {
 
         final StateGraph<FailureState> builder = new StateGraph<>(FailureState.SCHEMA, FailureState::new)
                 .addNode(NODE_CALL_SOURCE, node_async((state, config) -> {
-                    if (state.humanDecision().isPresent()) {
-                        final String human = state.humanDecision().get();
+                    if (state.hasHumanDecision()) {
+                        final String human = state.humanDecision().orElse(FailureState.NO_HUMAN_DECISION);
                         LOG.info("call_decision_source | human decision present, 节点不再拒绝 | humanDecision={}", human);
                         return Map.of(
                                 FailureState.KEY_DECISION, DECISION_APPROVE,
@@ -295,7 +295,14 @@ public final class Phase5FailureSeams {
                 POST_CANCEL_OBSERVE_MILLIS, nodeFinished.get(), nodeInterrupted.get());
 
         final GraphResult done = GraphResult.from(stream);
-        LOG.info("[D] GraphResult.from(stream).type() = {}", done.type());
+        LOG.info("[D] 走 Iterator 路径的完成值 = {} | （取消并没有让消费方看见 CANCELLED）", done.type());
+
+        // 绕开 Iterator 直接读生成器：CANCELLED 这个完成值只有在直接 next() 的路径上才拿得到。
+        final AsyncGenerator.Data<NodeOutput<FailureState>> direct = stream.next();
+        final Object directResultValue = direct.resultValue();
+        final GraphResult viaDirectNext = GraphResult.from(directResultValue);
+        LOG.info("[D] 直接 stream.next() | isDone={} | resultValue={}", direct.isDone(), directResultValue);
+        LOG.info("[D] 该完成值的 GraphResult.type() = {}", viaDirectNext.type());
 
         final StateSnapshot<FailureState> snapshot = graph.getState(config);
         LOG.info("[D] getState | node={} | next={}", snapshot.node(), snapshot.next());
