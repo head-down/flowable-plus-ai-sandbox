@@ -4,6 +4,7 @@ import org.bsc.async.AsyncGenerator;
 import org.bsc.langgraph4j.CompileConfig;
 import org.bsc.langgraph4j.CompiledGraph;
 import org.bsc.langgraph4j.GraphInput;
+import org.bsc.langgraph4j.GraphInterruptException;
 import org.bsc.langgraph4j.GraphResult;
 import org.bsc.langgraph4j.GraphRunnerException;
 import org.bsc.langgraph4j.NodeOutput;
