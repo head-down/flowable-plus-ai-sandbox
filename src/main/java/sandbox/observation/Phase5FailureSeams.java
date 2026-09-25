@@ -278,6 +278,7 @@ public final class Phase5FailureSeams {
         final RunnableConfig config = RunnableConfig.builder().threadId(THREAD_CANCEL).build();
 
         final AsyncGenerator.Cancellable<NodeOutput<FailureState>> stream = graph.stream(Map.of(), config);
+        LOG.info("[D] stream 实现类 = {}", stream.getClass().getName());
         final Iterator<NodeOutput<FailureState>> iterator = stream.iterator();
         while (iterator.hasNext()) {
             final NodeOutput<FailureState> output = iterator.next();
@@ -285,7 +286,7 @@ public final class Phase5FailureSeams {
             LOG.info("[D] stream event | node={} | state={}", output.node(), state);
             if (output.isSTART()) {
                 final boolean cancelled = stream.cancel(true);
-                LOG.info("[D] stream.cancel(true) returned {}", cancelled);
+                LOG.info("[D] stream.cancel(true) returned {} | isCancelled()={}", cancelled, stream.isCancelled());
             }
         }
         LOG.info("[D] iteration ended | nodeFinished={} | nodeInterrupted={}", nodeFinished.get(), nodeInterrupted.get());
@@ -297,12 +298,13 @@ public final class Phase5FailureSeams {
         final GraphResult done = GraphResult.from(stream);
         LOG.info("[D] 走 Iterator 路径的完成值 = {} | （取消并没有让消费方看见 CANCELLED）", done.type());
 
-        // 绕开 Iterator 直接读生成器：CANCELLED 这个完成值只有在直接 next() 的路径上才拿得到。
+        // 绕开 Iterator 直接读生成器：看取消到底有没有产生一个「取消」的完成值。
         final AsyncGenerator.Data<NodeOutput<FailureState>> direct = stream.next();
         final Object directResultValue = direct.resultValue();
         final GraphResult viaDirectNext = GraphResult.from(directResultValue);
-        LOG.info("[D] 直接 stream.next() | isDone={} | resultValue={}", direct.isDone(), directResultValue);
-        LOG.info("[D] 该完成值的 GraphResult.type() = {}", viaDirectNext.type());
+        LOG.info("[D] 直接 stream.next() | isDone={} | isError={} | resultValue={}",
+                direct.isDone(), direct.isError(), directResultValue);
+        LOG.info("[D] 该完成值的 GraphResult.type() = {} | isCancelled()={}", viaDirectNext.type(), stream.isCancelled());
 
         final StateSnapshot<FailureState> snapshot = graph.getState(config);
         LOG.info("[D] getState | node={} | next={}", snapshot.node(), snapshot.next());
